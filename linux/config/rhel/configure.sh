@@ -7,7 +7,7 @@
 #######################################################################
 
 # bash file used for profiling information
-BASHRC=$HOME/bashrc_fake
+BASHRC=$HOME/.bashrc
 BASHPROFILE=$HOME/.bash_profile
 
 
