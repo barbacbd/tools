@@ -1,12 +1,5 @@
-# README #
+# Tools Documentation
 
-This README would normally document whatever steps are necessary to get your application up and running.
+The project is a collection of scripts, tools, etc. that have been useful in the past. There will
+generally be no specific reason mentioned for each of the files in this project.
 
-### What is this repository for? ###
-
-* Collection of Bash scripts
-* 1.0.0
-
-### How do I get set up? ###
-
-Simply download the repo or any single file. They should work with bash. If you wish to make it global add it to your path.
