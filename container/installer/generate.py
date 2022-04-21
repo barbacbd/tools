@@ -7,6 +7,7 @@ from datetime import datetime
 from shutil import rmtree
 import stat as STAT
 from pathlib import Path
+from yaml import safe_load
 
 
 log = getLogger()
@@ -42,30 +43,6 @@ def generate_dockerfile_statements(platform):
     return statements
 
 
-def gen_platform_envvars(platform, *args, **kwargs):
-    """
-    Generate the environment variables that are necessary for the platform
-
-    :param platform: See argparse for supported platforms
-    :return: List of statements that will be added to the docker file tagged with `ENV`
-    """
-    data = {
-        "aws": [
-            "AWS_PROFILE={}".format(kwargs.get("AWS_PROFILE", "openshift-dev"))
-        ],
-        "gcp": [
-            "GOOGLE_APPLICATION_CREDENTIALS={}".format(
-                kwargs.get("GOOGLE_APPLICATION_CREDENTIALS", "/home/{}/.gcp/gcp-key.json".format(getuser()))
-            )
-        ]
-    }.get(platform, [])
-
-    for i in range(len(data)):
-        data[i] = "ENV " + data[i]
-
-    return data
-
-
 def generate_dockerfile(packs, envvars, extra_commands):
     """
     Generate the docker file.
@@ -88,8 +65,8 @@ RUN yum install -y {}
 RUN wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz && tar -xvzf openshift-client-linux.tar.gz && cp oc /usr/bin/
 
 # move the installation script over to the image so it is available to all
-RUN mkdir scripts
-ADD scripts /scripts
+ADD install.sh /install.sh
+ADD install-config.yaml /install-config.yaml
 
 # added environment variables
 {}
@@ -152,7 +129,7 @@ def generate_install_in_container_script():
     data = """#!/bin/bash
 ./openshift-install create cluster --dir /cluster --log-level debug
     """
-    script_name = "{}/scripts/install.sh".format(generation_dir)
+    script_name = "{}/install.sh".format(generation_dir)
     
     with open(script_name, "w+") as ifile:
         ifile.write(data)
@@ -169,11 +146,10 @@ set -eux
 src_dir={}
 installer_binary=$src_dir/bin/openshift-install
     
-
+#    -v "/home/{}/clusters/{}/{}":/cluster/        \\
 podman run --rm -it                               \\
-    -v "/home/{}/clusters/{}/{}":/cluster/        \\
     -v $installer_binary:/openshift-install    \\
-    -v "/home/{}/.{}":/.{}                         \\
+    -v "/home/{}/.{}":/root/.{}                         \\
     -e OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={} \\
     -e KUBECONFIG="/c/auth/kubeconfig"             \\
     {}:{} /bin/bash
@@ -194,83 +170,16 @@ podman run --rm -it                               \\
     p.chmod(p.stat().st_mode | STAT.S_IEXEC) 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate the necessary files for"
-                                     " creating the docker/podman image for the openshift installer"
-    )
+    with open("config.yaml", "r") as config:
+        yaml_data = safe_load(config)
 
-    parser.add_argument(
-        '-d', '--dir',
-        help='Directory containing credentials information, default will be /home/user/.<platform>',
-        type=str,
-        default=None
-    )
-    parser.add_argument(
-        'ssh_key',
-        help='File containing the ssh key that the user will utilize',
-        type=str
-    )
-    parser.add_argument(
-        'secrets',
-        help='File containing the secrets that the user will utilize',
-        type=str
-    )
-    parser.add_argument(
-        '-p', '--platform',
-        help='Supported cloud platform to configure',
-        type=str,
-        choices=['aws', 'gcp'],
-        default='aws'
-    )
-    parser.add_argument(
-        '-r', '--region',
-        help='Platform region to use for configuration',
-        type=str,
-        default=None
-    )
-    parser.add_argument(
-        '--aws_profile',
-        help='Only appliable to aws, AWS Profile Settings, found in aws config',
-        type=str,
-        default='openshift-dev'
-    )
-    parser.add_argument(
-        '--google_creds',
-        help='Only appliable to gcp, GCP App Creds file',
-        type=str,
-        default="/home/{}/.gcp/gcp-key.json".format(getuser())
-    )
-    parser.add_argument(
-        '--os_image_name',
-        help='path/name of the Openshift image to use',
-        type=str,
-        default='quay.io/openshift-release-dev/ocp-release:4.10.10.x86_64'
-    )
-    parser.add_argument(
-        '--custom_image_name',
-        help='name of the image that will be created from the dockerfile',
-        type=str,
-        default='installer-wwt'
-    )
-    parser.add_argument(
-        '--custom_image_tag',
-        help='tag for the image that will be created from the dockerfile',
-        type=str,
-        default='latest'
-    )
-    parser.add_argument(
-        '--installer_dir',
-        help='Base directory for the local openshift installer code.',
-        type=str,
-        default='/home/{}/dev/installer'.format(getuser())
-    )
+    ssh_file = yaml_data["ssh_key_file"]
     
-    args = parser.parse_args()
-
     # read in the ssh data from the file
     ssh_info = None
-    if exists(args.ssh_key) and isfile(args.ssh_key):
-        with open(args.ssh_key, 'r') as ssh_file:
-            ssh_info = ssh_file.read()
+    if exists(ssh_file) and isfile(ssh_file):
+        with open(ssh_file, 'r') as s:
+            ssh_info = s.read()
     else:
         log.error("Invalid ssh key file")
         exit(1)
@@ -279,11 +188,12 @@ if __name__ == "__main__":
         log.error("No ssh info found")
         exit(2)
 
+    secrets_file = yaml_data["secrets_file"]
     # read in the secrets data from the file
     secrets_info = None
-    if exists(args.secrets) and isfile(args.secrets):
-        with open(args.secrets, 'r') as secrets_file:
-            secrets_info = secrets_file.read()
+    if exists(secrets_file) and isfile(secrets_file):
+        with open(secrets_file, 'r') as s:
+            secrets_info = s.read()
     else:
         log.error("Invalid secrets file")
         exit(3)
@@ -292,21 +202,22 @@ if __name__ == "__main__":
         log.error("No secrets info found")
         exit(4)
 
-    creds_dir = args.dir
-    if creds_dir is None:
-        creds_dir = "/home/{}/.{}".format(getuser(), args.platform)
-        log.debug("Set the credentials directory to {}".format(creds_dir))
+    platform = yaml_data["platform"]
+    region = yaml_data["region"]
+
+
+    installer_dir = yaml_data["installer"]["dir"]
+    os_image = yaml_data["installer"]["image"]
+
+    docker_image_name = yaml_data["docker"]["image_name"]
+    docker_image_tag = yaml_data["docker"]["tag"]
+    
+    creds_dir = "/home/{}/.{}".format(getuser(), platform)
+    log.debug("Set the credentials directory to {}".format(creds_dir))
 
     if not isdir(creds_dir):
         log.error("{} does not exist".format(creds_dir))
         exit(1)
-
-    region = args.region
-    if region is None:
-       region = {
-           "aws": "us-east-1",
-           "gcp": "us-east1"
-       }.get(args.platform)
 
     log.debug("Region is set to {}".format(region))
 
@@ -324,8 +235,8 @@ if __name__ == "__main__":
     dt = datetime.now().strftime("%Y%m%d")
 
     generate_install_config(
-        "{}-{}-{}".format(getuser(), args.platform, dt),
-        args.platform,
+        "{}-{}-{}".format(getuser(), platform, dt),
+        platform,
         region,
         ssh_info,
         secrets_info
@@ -333,26 +244,25 @@ if __name__ == "__main__":
 
     generate_install_in_container_script()
     generate_install_base_install_script(
-        args.platform,
-        args.installer_dir,
-        args.os_image_name,
-        args.custom_image_name,
-        args.custom_image_tag,
+        platform,
+        installer_dir,
+        os_image,
+        docker_image_name,
+        docker_image_tag,
         dt
     )
 
     # base packages + platform specific
-    packs = ["jq", "wget", "ncurses"] + get_custom_packages(args.platform)
+    packs = ["jq", "wget", "ncurses"] + get_custom_packages(platform)
 
     # supply everything that we have, doesn't matter on the platform, the function
     # will choose what it needs
-    envvars = gen_platform_envvars(
-        args.platform,
-        AWS_PROFILE=args.aws_profile,
-        GOOGLE_APPLICATION_CREDENTIALS=args.google_creds
-    )
+    envvars = ["ENV {}={}".format(k, v) for k, v in yaml_data["env"].items()]
 
-    extra_df_statements = generate_dockerfile_statements(args.platform)
+    extra_df_statements = generate_dockerfile_statements(platform)
 
     generate_dockerfile(packs, envvars, extra_df_statements)
     
+
+    print("Execute the following command:\n")
+    print("cd {} && podman build . -t {}:{}".format(generation_dir, docker_image_name, docker_image_tag))
