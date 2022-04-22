@@ -7,6 +7,9 @@ platform: aws
 # gcp: https://cloud.google.com/compute/docs/regions-zones
 region: us-east1
 
+# Base domain may be specific to the
+base_domain: devcluster.openshift.com
+
 # The secrets file contains all secrets for the installer
 secrets_file: "/home/bbarbach/secrets/pull-secrets.txt"
 # The keys are typically found in /home/$USER/.ssh/
