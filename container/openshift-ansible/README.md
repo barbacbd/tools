@@ -7,7 +7,7 @@ Throughout the document, AWS will be the platform of choice.
 
 See the following Projects for references that will be mentioned throughout this document:
 
-- [Pull Secrets](./PullSecrets.md)
+- [Pull Secrets](./PullSecret.md)
 - [OA-Testing](https://github.com/mtnbikenc/oa-testing) - Utilities to install clusters to aws utilizing openshift-ansible
 - [OI-Dev](https://github.com/jstuever/oi-dev) - Simpler cluster installation utilizing openshift-ansible
 - [Openshift Installer](https://github.com/openshift/installer)
