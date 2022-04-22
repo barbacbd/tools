@@ -2,50 +2,32 @@
 
 The script `generate.py` will generate the necessary file for creating a docker image.
 
-The output files will reside in `./openshift-installer-data`
+The following is the output when the command in line 1 is executed.
 
-```bash
-python3 generate.py <args>
+```
+[$USER@$USER installer]$ python3 generate.py 
+Removing all data from openshift-installer-data
+Execute the following command:
 
-cd openshift-installer-data
-
-podman build . -t $USER:latest
+cd openshift-installer-data && podman build . -t <image_name>:<image_tag>
 ```
 
-# Arguments
-The following are the arguments that can be supplied to the generate script.
+The output files will reside in `./openshift-installer-data`. The user can copy and paste
+the final line of the output to create the image.
 
-## Required
+The following should provide a look at your new image.
 
-`ssh_key'` - File where the users public key can be found
-`seecrets` - File where all secrets credential information can be found.
+```bash
+podman image ls
+```
 
-## Optional
+To enter the image go to `openshift-installer-data` and execute `connect.sh`.
 
-`-p`, `--platform` - Supported cloud platform to configure.
-- Accepted = 'aws', 'gcp'
-- Default = 'aws'
+To run the installer with the auto generated config, execute the script `install.sh` from
+a running container. The file resides in `/`.
 
-`-r`, `--region` -Platform region to use for configuration.
-- Default=None
 
-`--aws_profile` - Only appliable to aws, AWS Profile Settings, found in aws config.
-- Default = 'openshift-dev'
-
-`--google_creds` - Only appliable to gcp, GCP App Creds file.
-- Default = '~/.gcp/gcp-key.json'
-
-`--os_image_name` - path/name of the Openshift image to use.
-- Default = 'quay.io/openshift-release-dev/ocp-release:4.10.10.x86_64'
-
-`--custom_image_name` - name of the image that will be created from the dockerfile.
-- Default = 'installer-wwt'
-
-`--custom_image_tag` - tag for the image that will be created from the dockerfile.
-- Default = 'latest'
-
-`--installer_dir` - Base directory for the local openshift installer code.
-- Default = '~/dev/installer'
+# YAML Configuration
 
 
 # Supported Platforms

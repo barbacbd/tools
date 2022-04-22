@@ -64,9 +64,10 @@ RUN yum install -y {}
 # Grab the openshift client, unpack it and move it to the bin for use
 RUN wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz && tar -xvzf openshift-client-linux.tar.gz && cp oc /usr/bin/
 
-# move the installation script over to the image so it is available to all
+# set the cluster directory where the information will be used for the installer
 ADD install.sh /install.sh
-ADD install-config.yaml /install-config.yaml
+RUN mkdir /cluster
+ADD install-config.yaml /cluster/install-config.yaml
 
 # added environment variables
 {}
@@ -110,18 +111,13 @@ platform:
   {}:
     region: {}
 publish: External
-pullSecret: {}                                                                                                                                                                                              
+pullSecret: '{}'
 sshKey: |
   {}
-    """.format(
-        cluster_name,
-        platform,
-        region,
-        secrets,
-        ssh_key
-    )
+"""
+
     with open("{}/install-config.yaml".format(generation_dir), 'w+') as install_config:
-        install_config.write(install_config_data)
+        install_config.write(install_config_data.format(cluster_name, platform, region, secrets, ssh_key))
         
 
 def generate_install_in_container_script():
@@ -161,7 +157,7 @@ podman run --rm -it                               \\
         custom_image_name, custom_image_tag # line 7
     )
 
-    script_name = "{}/installer.sh".format(generation_dir)
+    script_name = "{}/connect.sh".format(generation_dir)
 
     with open(script_name, 'w+') as ifile:
         ifile.write(data)
@@ -228,7 +224,7 @@ if __name__ == "__main__":
         
     mkdir(generation_dir)
     # create the dir where extra scripts will reside
-    mkdir("{}/scripts".format(generation_dir))
+    mkdir("{}/cluster".format(generation_dir))
 
     # datetime string that can be used for several functions if needed
     # this will control the name of the clusters and directories
