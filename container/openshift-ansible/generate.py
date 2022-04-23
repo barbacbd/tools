@@ -42,11 +42,45 @@ def generate_commands(platform):
     return statements
 
 
-def generate_install_in_container_script():
+def generate_install_osansible_in_container_script():
     # generate a script that will be added to the container
     data = """#!/bin/bash
-./openshift-install create cluster --dir /cluster --log-level debug
-    """
+./openshift-install create cluster --dir /oi-dev/assets --log-level debug
+
+cd oi-dev;
+
+scripts/oi-byoh.sh bastion 
+if [ $? -eq 0 ]; then
+    echo "Moving to create ..."
+else
+    echo "bastion failed, exiting ..."
+    exit 1
+fi
+
+scripts/oi-byoh.sh create 
+if [ $? -eq 0 ]; then
+    echo "Moving to prepare ..."
+else
+    echo "create failed, exiting ..."
+    exit 1
+fi
+
+scripts/oi-byoh.sh prepare 
+if [ $? -eq 0 ]; then
+    echo "Moving to scaleup ..."
+else
+    echo "prepare failed, exiting ..."
+    exit 1
+fi
+
+scripts/oi-byoh.sh scaleup
+if [ $? -eq 0 ]; then
+    echo "Success ..."
+else
+    echo "scaleup failed, exiting ..."
+    exit 1
+fi
+"""
     script_name = "{}/install.sh".format(generation_dir)
     
     with open(script_name, "w+") as ifile:
@@ -65,7 +99,18 @@ yum install -y git {}
 {}
 
 {}
-    """
+
+# Clone the oi-dev project
+if [ ! -d "/oi-dev" ] ; then
+    git clone git@github.com:jstuever/oi-dev.git;
+    cd oi-dev/;
+    mkdir assets;
+    cd -;
+else
+    echo "oi-dev already exists ...";
+fi
+
+"""
     for i in range(len(envvars)):
         if not envvars[i].startswith("export"):
             envvars[i] = "export " + envvars[i]
@@ -169,7 +214,6 @@ if __name__ == "__main__":
     jinja_data["ssh_key"] = ssh_info
     
     # using the template and the config data to generate the install-config
-
     p = dirname(abspath(__file__)) + "/../templates/{}/".format(platform)
     j2_files = [dirf for dirf in listdir(p) if isfile(join(p, dirf)) and dirf.endswith(".j2")]
     if j2_files:
@@ -184,7 +228,24 @@ if __name__ == "__main__":
     output = template.render(jinja_data)
     with open("{}/{}".format(generation_dir, j2_file.replace(".j2", "")), "w+") as ic:
         ic.write(output)
-    
+
+    # generate the public and private filenames and add them to the dockerfile
+    sp = ssh_file.split("/")
+    _ssh_filename = sp[len(sp)-1]
+
+    if _ssh_filename.endswith(".pub"):
+        public_file = _ssh_filename
+        private_file = _ssh_filename.replace(".pub", "")
+    else:
+        private_file = _ssh_filename
+        public_file = _ss_filename + ".pub"
+
+    with open("Dockerfile.j2", "r") as jfile:
+        template = Template(jfile.read())
+    output = template.render({"PUBLIC_KEY_FILENAME": public_file, "PRIVATE_KEY_FILENAME": private_file})
+    with open("{}/Dockerfile".format(generation_dir), "w+") as ic:
+        ic.write(output)
+        
     creds_dir = "/home/{}/.{}".format(getuser(), platform)
     log.debug("Set the credentials directory to {}".format(creds_dir))
 
@@ -192,7 +253,7 @@ if __name__ == "__main__":
         log.error("{} does not exist".format(creds_dir))
         exit(1)
         
-    generate_install_in_container_script()
+    generate_install_osansible_in_container_script()
     generate_install_base_install_script(platform, installer_dir, os_image, docker_image_name, docker_image_tag)
 
     packs = get_custom_packages(platform)
@@ -200,9 +261,5 @@ if __name__ == "__main__":
     commands = generate_commands(platform)
     generate_configure_in_container_script(packs, envvars, commands)
 
-    # copy the dockerfile over to the openshift-install-dir
-    log.debug("Copying Dockerfile over to {}".format(generation_dir))
-    copy(join(dirname(abspath(__file__)), "Dockerfile"), generation_dir)
-    
     print("Execute the following command:\n")
     print("cd {} && podman build . -t {}:{}".format(generation_dir, docker_image_name, docker_image_tag))

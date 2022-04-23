@@ -22,4 +22,7 @@ RUN mkdir /cluster
 ADD install-config.yaml /cluster/install-config.yaml
 
 # move all of the ssh keys over to the image 
-ADD ~/.ssh/ /.ssh 
+ADD ~/.ssh/ /.ssh
+
+RUN cp /.ssh/{{ PUBLIC_KEY_FILENAME }} /.ssh/oi.pub
+RUN cp /.ssh/{{ PRIVATE_KEY_FILENAME }} /.ssh/oi
