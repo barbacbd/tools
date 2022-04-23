@@ -132,3 +132,4 @@ In order for the commands above to work, ansible needs to be uninstalled or conf
 6. AWS key issues
 
 Go to AWS site, and create new keys or match the keys for each region. If you decide to install to a different region, then that region needs to have a matching key. **You can name the keys the same between regions.**
+
