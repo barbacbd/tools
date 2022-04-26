@@ -20,7 +20,8 @@ I renamed the file to `all-pull-secrets.txt`. This is not necessary, but I wante
 
 Visit this [site](https://oauth-openshift.apps.ci.l2s4.p1.openshiftapps.com/oauth/token/request) to obtain the CI pull secret.
 
-Copy the CI pull secret to a json file in the format:
+Copy the `oc` command on the page to login. After completing the login process run `oc registry login --to {{ filename }}`. The
+pull secret will be in the form: 
 
 ```json
 {
@@ -31,8 +32,6 @@ Copy the CI pull secret to a json file in the format:
   }
 }
 ```
-
-Replace the `CI_PULL_SECRET` with your pull secret that you just pulled.
 
 
 # Combine the secrets into a single file
