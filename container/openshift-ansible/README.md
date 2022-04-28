@@ -21,8 +21,19 @@ See the following Projects for references that will be mentioned throughout this
 The assets directory is the default where the installation should occur for the `oi-dev` project to
 utilize openshift-installer information.
 
+2. Ensure that there is an ssh key called `oi`.
 
-2. Create a cluster using openshift-installer.
+There should be a matching public key called `oi.pub`. It is ok to **copy** the
+ssh key that you normally use. DO NOT sim-link the keys as this could create issues if you
+ever remove the keys or change them.
+
+**NOTE**: If the key in OI is the same as the one used for the openshift installer create cluster, then
+this process will go smoother. 
+
+
+3. Create a cluster using openshift-installer or using the oi.sh script
+
+- Option 1
 
 ```bash
 cd /path/to/installer/;
@@ -35,17 +46,28 @@ bin/openshift-installer create cluster --dir /path/to/assets
 
 Go through the process of creating a cluster for AWS.
 
+- Option 2
 
-3. Ensure that there is an ssh key called `oi`.
+```
+mkdir ~/oi
+mkdir {{ PLATFORM }}
+```
 
-There should be a matching public key called `oi.pub`. It is ok to **copy** the
-ssh key that you normally use. DO NOT sim-link the keys as this could create issues if you
-ever remove the keys or change them.
+Create a template for the install-config
 
-**NOTE**: If the key in OI is the same as the one used for the openshift installer create cluster, then
-this process will go smoother. 
+```
+apiVersion: v1
+baseDomain: devcluster.openshift.com
+metadata:
+  name: {{ CLUSTER NAME }}
+platform:
+  {{ PLATFORM }}:
+    region: {{ REGION }}
+```
 
-4. Add the openshift-installer bin to the path
+Move to the oi-dev directory and run `scripts/oi.sh`.
+
+4. Add the openshift-installer bin to the path [OPTIONAL]
 
 `export PATH=/path/to/installer/bin:$PATH`
 
@@ -62,7 +84,7 @@ mv /path/to/installer/bin/openshift-installer /home/$USER/bin
 This makes the assumption that `/home/$USER/bin` is in your path.
 
 
-5. Version control openshift client
+5. Version control openshift client [OPTIONAL]
 
 Similar to step 4 (above), oc or the openshift client software can be version controlled by
 moving the file to `/home/$USER/bin`. From this directory we can rename the `oc` with a version
@@ -80,9 +102,33 @@ ln -s oc-<version> oc
 Now `oc` will be the version that you want it to be.
 
 
-6. 
+6. Setting up the environment
+
+**NOTE:** Using `ansible==2.9.27` failed. Remove this from the computer (at least for now).
+
+Install `libselinux-python3` via yum. This will be picked up as a pip package that you can see as version (>=2.9) via pip3 list. **If you install directly with pip, the version is VERY different.**
+
+Create a virtual environment for python3
+
+```
+python3 -m venv ansible-2.10.7 --system-site-packages
+
+pip install pip --upgrade
+
+pip install ansible-base ansible==2.10.7 boto3
+```
+
+In order for the commands above to work, ansible needs to be uninstalled or conflicts will occur with `ansible-base`. This is an issue because we also need selinux for python3, and this had to be pulled in from the global package list as we cannot install the correct version.
 
 
+7. Run the commands to setup openshift ansible
+
+```
+scripts/oi-byoh.sh bastion
+scripts/oi-byoh.sh create
+scripts/oi-byoh.sh prepare
+scripts/oi-byoh.sh upscale
+```
 
 # FAQ
 
@@ -102,34 +148,27 @@ created.
 
 3. Don't forget to destroy your cluster when finished !
 
-4. My oi-byoh.sh script is failing, what next?
-
-4.1 Bastion - Make sure that the oi key is the same. See section above.
-
-4.2 Create -
-
-4.3 Prepare -
-
-
-5. Problems running oi-byoh.sh.
-
-Using `ansible==2.9.27` failed. Remove this from the computer (at least for now).
-
-Install `libselinux-python3` via yum. This will be picked up as a pip package that you can see as version (>=2.9) via pip3 list. **If you install directly with pip, the version is VERY different.**
-
-Create a virtual environment for python3
-
-```
-python3 -m venv ansible-2.10.7 --system-site-packages
-
-pip install pip --upgrade
-
-pip install ansible-base ansible==2.10.7 boto3
-```
-
-In order for the commands above to work, ansible needs to be uninstalled or conflicts will occur with `ansible-base`. This is an issue because we also need selinux for python3, and this had to be pulled in from the global package list as we cannot install the correct version.
-
-6. AWS key issues
+4. AWS key issues
 
 Go to AWS site, and create new keys or match the keys for each region. If you decide to install to a different region, then that region needs to have a matching key. **You can name the keys the same between regions.**
 
+5. Testing SSH
+
+```
+ssh -o IdentityFile=~/.ssh/oi -o StrictHostKeyChecking=no core@$(<assets/byoh/bastion)
+```
+
+6. Does not know about ansible
+
+If you used a venv and it is **NOT** sourced, or if ansible is not installed the following error could
+appear during `oi-byoh.sh create`:
+
+```
+$ scripts/oi-byoh.sh create
+time: cannot run ansible-playbook: No such file or directory
+Command exited with non-zero status 127
+0.00user 0.00system 0:00.00elapsed 82%CPU (0avgtext+0avgdata 860maxresident)k
+0inputs+0outputs (0major+22minor)pagefaults 0swaps
+```
+
+**NOTE:** All ansible logs are wrapped in `time:` when using `oi-dev`.
