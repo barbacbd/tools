@@ -138,6 +138,18 @@ The bastion was/is a defense mechanism that provides a link or connection to the
 in the cluster so that we can reach the cluster through this pod. It provides a connection to the cluster but access must be
 achieved indirectly.
 
+Checking that the bastion was created ...
+
+There should be a file `./assets/byoh/bastion`. The file will contain the bastion host.
+
+You may also verify that the bastion was created with
+
+```
+oc get service -n test-ssh-bastion ssh-bastion -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+```
+
+The name _should_ match that of the host in `./assets/byoh/bastion`.
+
 2. Openshift Installer vs Openshift Ansible
 
 Openshift Ansible is generally related to ansible and talked about with versions 3.x. In the past, RHEL nodes were used. After
@@ -158,6 +170,17 @@ Go to AWS site, and create new keys or match the keys for each region. If you de
 ssh -o IdentityFile=~/.ssh/oi -o StrictHostKeyChecking=no core@$(<assets/byoh/bastion)
 ```
 
+The above command will get you to the bastion.
+
+To ssh to the other nodes using the Bastion has a hopping point, look for the hosts in `assets/byoh/hosts`
+
+```
+scripts/oi-byoh.sh ssh ec2-user@<host from hosts file>
+```
+
+**Note:** The user above was `ec2-user`, please make sure that this remains!
+
+
 6. Does not know about ansible
 
 If you used a venv and it is **NOT** sourced, or if ansible is not installed the following error could
@@ -172,3 +195,62 @@ Command exited with non-zero status 127
 ```
 
 **NOTE:** All ansible logs are wrapped in `time:` when using `oi-dev`.
+
+
+# OC Commands
+
+## Bastion Lookup
+
+```
+oc get service -n test-ssh-bastion ssh-bastion -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+```
+
+```
+oc get service -n test-ssh-bastion
+```
+
+See #5 in FAQ about ssh to the bastion. **NOTE:** The username is core.
+
+
+## Checking machines and machinesets
+
+_**NOTE:** `--all_namespaces` and `-A` are the same._
+
+```
+oc get machinesets -A
+```
+
+_When running a normal openshift-install the command will only show nodes without the name RHEL in them. During an install with openshift ansible
+the machine sets will contain the machinesets for RHEL workers. You will see names ****-RHEL-***._
+
+```
+oc get machines -A
+```
+
+_When running a normal openshift-install the command will only show nodes without the name RHEL in them. During an install with openshift ansible
+the machines will contain the machines for RHEL workers. You will see names ****-RHEL-***._
+
+_If you are running these steps immediately after the `CREATE` script, then you will notice that the machines are `provisioned` but **NOT** `running`._
+
+
+## Delete Machines(ets)
+
+If you had a failure occur during the process, you may want to cleanup the machines before retrying.
+
+```
+oc delete machinesets -n {{ namespace }} {{ machine_name }}
+```
+
+You will see it say `deleting`, after that is completed (usualy takes 1-2 minutes). You are able to rerun the commands.
+
+
+# Cleanup/Destroy clusters that are no longer on your local system
+
+Create metadata.json with the following information:
+
+```
+{"clusterName":{{ CLUSTER_NAME }},"infraID": {{ CLUSTER_INFRA_ID }}, {{ PLATFORM }}:{"region": {{ REGION }}, "identifier":[{"kubernetes.io/cluster/{{ CLUSTER_INFRA_ID }}":"owned"}]}}
+```
+
+- You can find the cluster name (`CLUSTER_NAME`) on the platform where the cluster was installed.
+- You can find the cluster infra-id (`CLUSTER_INFRA_ID`) on the platform where the cluster was installed.
