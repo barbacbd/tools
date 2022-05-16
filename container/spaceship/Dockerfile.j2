@@ -51,58 +51,28 @@ RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 ####################################################################################
 ####################################################################################
 # The following directory will be used for FPATH (see the bashrc creation)
-RUN mkdir -p /usr/local/share/szh/site-functions
+RUN mkdir -p /usr/local/share/zsh/site-functions
 
 ####################################################################################
 # add some data to the bashrc file just for future use
 ####################################################################################
-RUN touch .bashrc
-RUN echo "# .bashrc" >> .bashrc
-RUN echo ""  >> .bashrc
-RUN echo "# source global definitions"  >> .bashrc
-RUN echo "if [ -f /etc/bashrc ]; then"  >> .bashrc
-RUN echo "    . /etc/bashrc"  >> .bashrc
-RUN echo "fi"  >> .bashrc
-RUN echo ""  >> .bashrc
-RUN echo "# Add some aliases that I utilize"  >> .bashrc
-RUN echo "alias clean='rm -rf *~'"  >> .bashrc
-RUN echo "alias ll='ls -la'"  >> .bashrc
-RUN echo ""  >> .bashrc
-RUN echo "export fpath=$fpath:/usr/local/share/zsh/site-functions/"  >> .bashrc
-RUN echo ""  >> .bashrc
-RUN echo "# start the z-shell"  >> .bashrc
-RUN echo ""  >> .bashrc
-RUN echo "if [ -z /usr/local/share/zsh/site-functions/prompt_spaceship_setup ]; then" >> .bashrc
-RUN echo "    ln -s /root/spaceship-prompt/spaceship.zsh /usr/local/share/zsh/site-functions/prompt_spaceship_setup" >> .bashrc
-RUN echo "fi"  >> .bashrc
-RUN echo ""  >> .bashrc
-RUN echo "zsh"  >> .bashrc
-
+COPY bashrc /root/.bashrc
 
 ####################################################################################
 #
-# Install the powerline-fonts dependency for spaceship
+# Download the powerline fonts project.
+# This will be installed and removed with the bashrc file
 #
 ####################################################################################
 RUN git clone git@github.com:powerline/fonts.git
-#RUN cd fonts
-#RUN ./install.sh
-# Cleanup what we just did
-#RUN cd ..
-#RUN rm -rf fonts
-
 
 ####################################################################################
-# WAWRNING: AUTO GENERATED - DO NOT EDIT
-
-RUN git clone git@github.com:barbacbd/spaceship-prompt.git
-
-# End auto generation
+#
+# Download the spaceship project
+#
 ####################################################################################
+RUN git clone git@github.com:{{ user }}/spaceship-prompt.git
+
 
 # Edit/Create the .zshrc file
-RUN touch .zshrc
-RUN echo "# .zshrc" >> .zshrc
-RUN echo "autoload -U promptinit; promptinit" >> .zshrc
-RUN echo "prompt spaceship" >> .zshrc
-
+COPY zshrc /root/.zshrc

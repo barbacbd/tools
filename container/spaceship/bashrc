@@ -1,0 +1,37 @@
+# .bashrc
+
+# source global definitions
+if [ -f /etc/bashrc ]; then
+   . /etc/bashrc
+fi
+
+# Add some aliases that I utilize
+alias clean='rm -rf *~'
+alias ll='ls -la'
+
+if [ -d /fonts ]; then
+   echo "Installing fonts locally ...";
+   cd fonts;
+   ./install;
+   cd ..;
+   echo "Removing fonts dir ...";
+   rm -rf fonts;
+fi
+
+if [ -z $fpath ]; then
+   echo "Adding to ${fpath}"
+   export fpath=$fpath:/usr/local/share/zsh/site-functions/
+fi
+
+if [ ! -f /usr/local/share/zsh/site-functions/prompt_spaceship_setup ]; then
+   echo "Creating the symlink for spaceship-prompt";
+   ln -s /spaceship-prompt/spaceship.zsh /usr/local/share/zsh/site-functions/prompt_spaceship_setup
+fi
+
+if [ -f .zshrc ]; then
+   echo "Sourcing zshrc";
+   source /root/.zshrc;
+fi
+
+# start the z-shell
+zsh
