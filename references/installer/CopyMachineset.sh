@@ -45,7 +45,7 @@ oc create -f $TempFile
 
 MachineStatus=$(oc get machines -n openshift-machine-api | grep $MachineCopyName  | awk 'NR==1{print $2}')
 
-while [[ "$MachineStatus" != "Running" ]] ; then
+while [[ "$MachineStatus" != "Running" ]] ; do
     INFO "$MachineCopyName status: $MachineStatus"
     sleep 10
     TempMachineStatus=$(oc get machines -n openshift-machine-api | grep $MachineCopyName  | awk 'NR==1{print $2}')
