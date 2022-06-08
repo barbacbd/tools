@@ -1,17 +1,31 @@
 #!/bin/bash
 
-version=""
+# If the user would like to skip the questions they may provide the
+# version as argument #1
 
-while true; do
-    read -p "Would you like to pull the latest [y/N]? " use_latest
-    case $use_latest in
-	[Yy]* ) version="latest"; break;;
-	[Nn]* )
-	    read -p "What oc version would you like? " version;
-	    break;;
-	* ) echo "Please answer yes or no.";;
-    esac
-done
+version=""
+bindir=/home/$USER/bin
+
+if [ $# -ge 1 ]; then
+    version=$1
+fi
+
+if [ $# -ge 2 ]; then
+    bindir=$2
+fi
+
+if [ "$version" == "" ]; then
+    while true; do
+	read -p "Would you like to pull the latest [y/N]? " use_latest
+	case $use_latest in
+	    [Yy]* ) version="latest"; break;;
+	    [Nn]* )
+		read -p "What oc version would you like? " version;
+		break;;
+	    * ) echo "Please answer yes or no.";;
+	esac
+    done
+fi
 
 mkdir openshift_puller_tmp;
 pushd openshift_puller_tmp;
@@ -24,14 +38,20 @@ retrieved_version=$(./oc version | head -n 1 | awk '{print $3}')
 # rename the OC with the version 
 mv oc oc-$retrieved_version
 # move the kube control executable over too
-mv kubectl /home/$USER/bin
+mv kubectl $bindir
 
-mv oc-$retrieved_version /home/$USER/bin
-pushd /home/$USER/bin
+mv oc-$retrieved_version $bindir
+pushd $bindir
 
-# unlink any current OC symlink
+
 if [ -f oc ]; then
-    unlink oc
+    # unlink any current OC symlink
+    if [ -L oc ]; then
+	unlink oc
+    else
+	# remove if it is not a symlink
+	rm -rf oc
+    fi
 fi
 
 # create a symlink to the retreived version of OC
