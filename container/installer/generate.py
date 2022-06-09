@@ -3,7 +3,7 @@ from logging import getLogger, DEBUG
 from getpass import getuser
 from os.path import isdir, isfile, exists, dirname, abspath, join
 from os import mkdir, chmod, stat, listdir
-from shutil import rmtree, copy
+from shutil import rmtree, copy, copyfile, copytree
 import stat as STAT
 from pathlib import Path
 from yaml import safe_load
@@ -42,20 +42,6 @@ def generate_commands(platform):
     return statements
 
 
-def generate_install_in_container_script():
-    # generate a script that will be added to the container
-    data = """#!/bin/bash
-./openshift-install create cluster --dir /cluster --log-level debug
-    """
-    script_name = "{}/install.sh".format(generation_dir)
-    
-    with open(script_name, "w+") as ifile:
-        ifile.write(data)
-
-    p = Path(script_name)
-    p.chmod(p.stat().st_mode | STAT.S_IEXEC) 
-
-
 def generate_configure_in_container_script(packs, envvars, commands):
     # generate a script that will be added to the container
     data = """#!/bin/bash
@@ -87,11 +73,11 @@ set -eux
 
 installer_binary={}/bin/openshift-install
 
-podman run --rm -it                               \\
-    -v $installer_binary:/openshift-install    \\
-    -v "/home/{}/.{}":/root/.{}                         \\
+podman run --rm -it \\
+    -v $installer_binary:/openshift-install \\
+    -v "/home/{}/.{}":/root/.{} \\
     -e OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={} \\
-    -e KUBECONFIG="/cluster/auth/kubeconfig"             \\
+    -e KUBECONFIG="/cluster/auth/kubeconfig" \\
     {}:{} /bin/bash
     """.format(
         os_installer_dir, # pre podman-command
@@ -158,7 +144,9 @@ if __name__ == "__main__":
     os_image = yaml_data["installer"]["image"]
     docker_image_name = yaml_data["docker"]["image_name"]
     docker_image_tag = yaml_data["docker"]["tag"]
-
+    oc_version = yaml_data["versions"]["client"]
+    installer_version = yaml_data["versions"]["installer"]
+    
     # generate the cluster name
     cluster_name = "{}-test-{}".format(getuser(), platform)
 
@@ -167,6 +155,9 @@ if __name__ == "__main__":
     jinja_data["cluster_name"] = cluster_name
     jinja_data["pull_secret"] = secrets_info
     jinja_data["ssh_key"] = ssh_info
+    jinja_data["BIN_DIR"] = "/usr/bin"
+    jinja_data["OC_VERSION"] = oc_version
+    jinja_data["INSTALLER_VERSION"] = installer_version
     
     # using the template and the config data to generate the install-config
 
@@ -186,13 +177,14 @@ if __name__ == "__main__":
         ic.write(output)
     
     creds_dir = "/home/{}/.{}".format(getuser(), platform)
+    copytree(creds_dir, join(generation_dir, platform))
+    jinja_data["CLOUD_CREDS_DIR"] = platform
     log.debug("Set the credentials directory to {}".format(creds_dir))
 
     if not isdir(creds_dir):
         log.error("{} does not exist".format(creds_dir))
         exit(1)
         
-    generate_install_in_container_script()
     generate_install_base_install_script(platform, installer_dir, os_image, docker_image_name, docker_image_tag)
 
     packs = get_custom_packages(platform)
@@ -200,9 +192,16 @@ if __name__ == "__main__":
     commands = generate_commands(platform)
     generate_configure_in_container_script(packs, envvars, commands)
 
-    # copy the dockerfile over to the openshift-install-dir
-    log.debug("Copying Dockerfile over to {}".format(generation_dir))
-    copy(join(dirname(abspath(__file__)), "Dockerfile"), generation_dir)
+    # format the dockerfile
+    docker_j2_file = "Dockerfile.j2"
+    with open(join(dirname(abspath(__file__)), docker_j2_file), "r") as jfile:
+        template = Template(jfile.read())
+    output = template.render(jinja_data)
+    with open(join(generation_dir, docker_j2_file.replace(".j2", "")), "w+") as ic:
+        ic.write(output)
+
+    # Copy ssh key over to the directory
+    copyfile(ssh_file, join(generation_dir, "id_rsa.pub"))
     
     print("Execute the following command:\n")
     print("cd {} && podman build . -t {}:{}".format(generation_dir, docker_image_name, docker_image_tag))
