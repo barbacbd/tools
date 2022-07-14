@@ -20,13 +20,51 @@ function INFO() {
     echo -e "${BLUE}[${FUNCNAME[0]}]: ${1}${COLOR_OFF}"
 }
 
+
 # These prints will be in yellow for better visualization
 # Gather information
-read -p $'\e[33mSource Directory\e[0m: ' SOURCE_DIR
-read -p $'\e[33mProject Name\e[0m: ' PROJECT
-read -p $'\e[33mAuthor(s)\e[0m: ' AUTHOR
-read -p $'\e[33mVersion\e[0m: ' VERSION
-read -p $'\e[33mCopyright year\e[0m: ' COPYRIGHT
+if [ "$#" -gt 0 ]; then
+    SOURCE_DIR=$1;
+else
+    read -p $'\e[33mSource Directory\e[0m: ' SOURCE_DIR
+fi
+
+if [ "$#" -gt 1 ]; then
+    PROJECT=$2;
+else
+    read -p $'\e[33mProject Name\e[0m: ' PROJECT
+fi
+
+if [ "$#" -gt 2 ]; then
+    AUTHOR=$3;
+else
+    read -p $'\e[33mAuthor(s)\e[0m: ' AUTHOR
+fi
+
+if [ "$#" -gt 3 ]; then
+    VERSION=$4;
+else
+    read -p $'\e[33mVersion\e[0m: ' VERSION
+fi
+
+if [ "$#" -gt 4 ]; then
+    COPYRIGHT=$5;
+else
+    read -p $'\e[33mCopyright year\e[0m: ' COPYRIGHT
+fi
+
+echo $SOURCE_DIR
+echo $PROJECT
+echo $AUTHOR
+echo $VERSION
+echo $COPYRIGHT
+     
+
+#read -p $'\e[33mSource Directory\e[0m: ' SOURCE_DIR
+#read -p $'\e[33mProject Name\e[0m: ' PROJECT
+#read -p $'\e[33mAuthor(s)\e[0m: ' AUTHOR
+#read -p $'\e[33mVersion\e[0m: ' VERSION
+#read -p $'\e[33mCopyright year\e[0m: ' COPYRIGHT
 
 # for test purposes, echo the python version
 pyv=$(python3 -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))')
@@ -50,7 +88,7 @@ source auto_doc_venv/bin/activate;
 # attempt to install all of the required python packages
 INFO "Installing new packages ..."
 pip install pip --upgrade;
-pip install sphinx;
+pip install sphinx sphinx-rtd-theme;
 
 # install the current package.
 pip install . --upgrade;
@@ -197,7 +235,7 @@ exclude_patterns = ['venv', '__pycache__']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
