@@ -53,18 +53,11 @@ else
     read -p $'\e[33mCopyright year\e[0m: ' COPYRIGHT
 fi
 
-echo $SOURCE_DIR
-echo $PROJECT
-echo $AUTHOR
-echo $VERSION
-echo $COPYRIGHT
-     
-
-#read -p $'\e[33mSource Directory\e[0m: ' SOURCE_DIR
-#read -p $'\e[33mProject Name\e[0m: ' PROJECT
-#read -p $'\e[33mAuthor(s)\e[0m: ' AUTHOR
-#read -p $'\e[33mVersion\e[0m: ' VERSION
-#read -p $'\e[33mCopyright year\e[0m: ' COPYRIGHT
+INFO "$SOURCE_DIR"
+INFO "$PROJECT"
+INFO "$AUTHOR"
+INFO "$VERSION"
+INFO "$COPYRIGHT"
 
 # for test purposes, echo the python version
 pyv=$(python3 -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))')
@@ -88,7 +81,7 @@ source auto_doc_venv/bin/activate;
 # attempt to install all of the required python packages
 INFO "Installing new packages ..."
 pip install pip --upgrade;
-pip install sphinx sphinx-rtd-theme;
+pip install sphinx sphinx-rtd-theme sphinx-mdinclude;
 
 # install the current package.
 pip install . --upgrade;
@@ -140,27 +133,31 @@ pushd source;
 
 INFO "Creating index.rst ..."
 cat <<EOF >index.rst
-.. nautical documentation master file, created by
-   sphinx-quickstart on Sun May 29 13:39:51 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root \`toctree\` directive.
+.. $PROJECT documentation master file, created by $AUTHOR through auto_doc.sh
 
-Welcome to nautical's documentation!
-====================================
+$PROJECT's Information
+======================
+
+.. mdinclude:: ../../README.md
+
+
+$PROJECT's Documentation
+========================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   $PROJECT.rst
 
-
-Indices and tables
-==================
-
-* :ref:\`genindex\`
-* :ref:\`modindex\`
-* :ref:\`search\`
 EOF
+
+#Indices and tables
+#==================
+#
+#* :ref:\`genindex\`
+#* :ref:\`modindex\`
+#* :ref:\`search\`
 
 
 INFO "Creating conf.py ..."
@@ -206,7 +203,8 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
-    'sphinx.ext.viewcode',]
+    'sphinx.ext.viewcode',
+    'sphinx_mdinclude',]
 
 # Set values for Napoleon
 napoleon_google_docstring = True
