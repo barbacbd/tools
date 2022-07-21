@@ -112,3 +112,7 @@ The following is the same as `export key=value`
 - aws
 - gcp
 
+
+# OC References
+
+Downloads can be found [here](https://amd64.ocp.releases.ci.openshift.org/).
