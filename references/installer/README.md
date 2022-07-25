@@ -116,3 +116,16 @@ The following is the same as `export key=value`
 # OC References
 
 Downloads can be found [here](https://amd64.ocp.releases.ci.openshift.org/).
+
+
+# Extra installation notes
+
+When installing a cluster from the latest `master/main` branch, export an environment variable to override the release image.
+
+```bash
+export OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE={ release-image }
+openshift-install create cluster
+```
+
+The release-image can be found [here](https://amd64.ocp.releases.ci.openshift.org/). Look at the top of the web page for the image name.
+Generally the line will include `oc adm release extract`, but you only need the image link at the tail end of the line.
