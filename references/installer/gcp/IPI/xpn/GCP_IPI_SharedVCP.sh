@@ -46,7 +46,8 @@ export PROJECT_NAME=$(jq -r .gcp.projectID metadata.json)
 export REGION=$(jq -r .gcp.region metadata.json)
 
 # default for xpn work is installer-shared-vpc
-export NETWORK_NAME="bbarbach-ipi-test"
+#export NETWORK_NAME="bbarbach-ipi-test"
+export NETWORK_NAME="installer-shared-vpc"
 
 # You can find this under
 # -- Project
@@ -58,12 +59,14 @@ export CLUSTER_NETWORK="${HOST_PROJECT_NETWORK}"
 
 
 # Grab the vpc creation script
-wget https://raw.githubusercontent.com/openshift/installer/master/upi/gcp/01_vpc.py
+if [ ! -f "01_vpc.py" ] ; then
+    wget https://raw.githubusercontent.com/openshift/installer/master/upi/gcp/01_vpc.py
+fi
 
+if [ ! -f "01_vpc.yaml" ]; then
 cat <<EOF >01_vpc.yaml
 imports:
 - path: 01_vpc.py
-- path: 03_firewall.py
 resources:
 - name: cluster-vpc
   type: 01_vpc.py
@@ -72,22 +75,21 @@ resources:
     region: '${REGION}'
     master_subnet_cidr: '${MASTER_SUBNET_CIDR}'
     worker_subnet_cidr: '${WORKER_SUBNET_CIDR}'
-- name: cluster-firewall
-  type: 03_firewall.py
-  properties:
-    allowed_external_cidr: '0.0.0.0/0'
-    infra_id: '${INFRA_ID}'
-    cluster_network: '${CLUSTER_NETWORK}'
-    network_cidr: '${NETWORK_CIDR}'
 EOF
+fi
 
 # Create the deployment, this corresponds to part 1 of the above yaml
 gcloud deployment-manager deployments create ${INFRA_ID}-vpc --config 01_vpc.yaml
 
+# give a break
+sleep 3.0
 
 # Grab the firewall script
-wget https://raw.githubusercontent.com/openshift/installer/master/upi/gcp/03_firewall.py
+if [ ! -f "03_firewall.py" ]; then
+    wget https://raw.githubusercontent.com/openshift/installer/master/upi/gcp/03_firewall.py
+fi
 
+if [ ! -f "03_firewall.yaml" ]; then
 cat <<EOF >03_firewall.yaml
 imports:
 - path: 03_firewall.py
@@ -100,6 +102,7 @@ resources:
     cluster_network: '${CLUSTER_NETWORK}'
     network_cidr: '${NETWORK_CIDR}'
 EOF
+fi
 
 # push firewall rules for the VPC to GCP
 gcloud --account=${HOST_PROJECT_ACCOUNT} --project=${HOST_PROJECT} deployment-manager deployments create ${INFRA_ID}-security-firewall --config 03_firewall.yaml
