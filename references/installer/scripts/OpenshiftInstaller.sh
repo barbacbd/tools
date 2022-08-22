@@ -19,8 +19,17 @@ if [ -f "install-config.yaml" ]; then
     cp install-config.yaml assets/
 fi
 
-INFO "Pushin assets on to stack ...";
+INFO "Pushing assets on to stack ...";
 pushd assets
+
+if [[ -z "${OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE}" ]]; then
+    DEFAULT_RELEASE="$(openshift-install version | grep 'release image ' | cut -d ' ' -f3 | cut -d ':' -f 2)"
+    echo "DEFAULT_RELEASE=${DEFAULT_RELEASE}"
+    RELEASE="${OPENSHIFT_RELEASE:-${DEFAULT_RELEASE}}"
+    export OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE="registry.ci.openshift.org/ocp/release:${RELEASE}"
+fi
+
+INFO "OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE=${OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE}"
 
 # Requires openshift-install in your path
 openshift-install create cluster
