@@ -1,0 +1,8 @@
+colorama
+google
+google-api-core
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-cloud
+googleapis-common-protos
